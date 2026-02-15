@@ -138,7 +138,7 @@ def get_transforms(config, ds_type="train"):
             # Zoom into food & remove plate/background bias
             A.RandomResizedCrop(
                 size=(cfg.input_size[1], cfg.input_size[2]),
-                scale=(0.6, 1.0),
+                scale=(0.7, 1.0),
                 ratio=(0.9, 1.1),
                 p=1.0
             ),

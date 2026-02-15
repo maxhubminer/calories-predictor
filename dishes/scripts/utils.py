@@ -134,7 +134,7 @@ def train(config):
     # !!!+
     from torch.utils.data import random_split
 
-    subset_size = int(0.5 * len(train_dataset))
+    subset_size = int(1.0 * len(train_dataset))
     rest_size = len(train_dataset) - subset_size
 
     subset_dataset, _ = random_split(train_dataset, [subset_size, rest_size])
@@ -146,7 +146,7 @@ def train(config):
     from torch.utils.data import Subset
 
         # val:
-    subset_sizeV = int(0.5 * len(val_dataset))
+    subset_sizeV = int(1.0 * len(val_dataset))
     rest_sizeV = len(val_dataset) - subset_sizeV
 
     subset_datasetV, _ = random_split(val_dataset, [subset_sizeV, rest_sizeV])
@@ -167,9 +167,9 @@ def train(config):
     )
 
     
-    subset_sizeVIZ = int(0.5 * len(train_dataset))
-    indices = sample(range(len(train_dataset)), subset_sizeVIZ)
-    subset_datasetVIZ = Subset(train_dataset, indices)
+    subset_sizeVIZ = int(1.0 * len(val_dataset))
+    indices = sample(range(len(val_dataset)), subset_sizeVIZ)
+    subset_datasetVIZ = Subset(val_dataset, indices)
 
     # Access original dataset for image_cfg
     orig_dataset = subset_datasetVIZ.dataset

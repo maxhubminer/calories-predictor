@@ -14,13 +14,12 @@ class Config:
     # Гиперпараметры
     BATCH_SIZE = 8
     #TEXT_LR = 3e-5
-    TEXT_LR = 3e-3
-    #IMAGE_LR = 1e-4    
-    IMAGE_LR = 1e-2
-    #CLASSIFIER_LR = 5e-4
-    CLASSIFIER_LR = 5e-2
-    EPOCHS = 10
-    DROPOUT = 0.2
+    TEXT_LR = 1e-4
+    #IMAGE_LR = 1e-4
+    IMAGE_LR = 5e-4
+    CLASSIFIER_LR = 5e-4
+    EPOCHS = 50
+    DROPOUT = 0.3
     HIDDEN_DIM = 256
 
     NORMALIZE_MASS = True
