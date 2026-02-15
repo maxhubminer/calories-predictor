@@ -1,14 +1,34 @@
 import os
 from functools import partial
 
+import re
+
 import timm
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from transformers import AutoModel, AutoTokenizer, AdamW
+from transformers import AutoModel, AutoTokenizer
+from torch.optim import AdamW
 
-from dataset import MultimodalDataset, collate_fn, get_transforms
+from scripts.dataset import MultimodalDataset, collate_fn, get_transforms
 
+from tqdm import tqdm
+
+def set_requires_grad(module, unfreeze_pattern="", verbose=False):
+    if len(unfreeze_pattern) == 0:
+        for param, _ in module.named_parameters():
+            param.requires_grad = False
+        return
+
+    pattern = re.compile(unfreeze_pattern)
+
+    for name, param in module.named_parameters():
+        if pattern.search(name):
+            param.requires_grad = True
+            if verbose:
+                print(f"Разморожен слой: {name}")
+        else:
+            param.requires_grad = False
 
 class MultimodalRegressor(nn.Module):
     def __init__(self, config):
@@ -35,7 +55,7 @@ class MultimodalRegressor(nn.Module):
         self.numeric_mlp = nn.Sequential(
             nn.Linear(1, 32),
             nn.ReLU(),
-            nn.BatchNorm1d(32),
+            nn.LayerNorm(32),
             nn.Dropout(0.1)
         )
 
@@ -46,12 +66,12 @@ class MultimodalRegressor(nn.Module):
         self.regressor = nn.Sequential(
             nn.Linear(fusion_dim, 256),
             nn.ReLU(),
-            nn.BatchNorm1d(256),
+            nn.LayerNorm(256),
             nn.Dropout(0.3),
 
             nn.Linear(256, 64),
             nn.ReLU(),
-            nn.BatchNorm1d(64),
+            nn.LayerNorm(64),
             nn.Dropout(0.2),
 
             nn.Linear(64, 1)
@@ -82,7 +102,16 @@ def train(config):
     # Инициализация модели и токенайзера
     # --------------------------
     model = MultimodalRegressor(config).to(DEVICE)
+
     tokenizer = AutoTokenizer.from_pretrained(config.TEXT_MODEL_NAME)
+
+    # Разморозка слоёв
+    set_requires_grad(model.text_model, unfreeze_pattern=config.TEXT_MODEL_UNFREEZE)
+    set_requires_grad(model.image_model, unfreeze_pattern=config.IMAGE_MODEL_UNFREEZE)
+
+    # !!!
+    for name, param in model.named_parameters():
+        print(name, param.requires_grad)
 
     optimizer = AdamW([
         {'params': model.text_model.parameters(), 'lr': config.TEXT_LR},
@@ -102,19 +131,69 @@ def train(config):
     train_dataset = MultimodalDataset(config, train_transforms, ds_type="train")
     val_dataset = MultimodalDataset(config, val_transforms, ds_type="test")
 
+    # !!!+
+    from torch.utils.data import random_split
+
+    subset_size = int(0.1 * len(train_dataset))
+    rest_size = len(train_dataset) - subset_size
+
+    subset_dataset, _ = random_split(train_dataset, [subset_size, rest_size])
+
+    # visualize+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from random import sample
+    from torch.utils.data import Subset
+
+        # val:
+    subset_sizeV = int(0.1 * len(val_dataset))
+    rest_sizeV = len(val_dataset) - subset_sizeV
+
+    subset_datasetV, _ = random_split(val_dataset, [subset_sizeV, rest_sizeV])
+
+    # !!!-
     train_loader = DataLoader(
-        train_dataset,
+        subset_dataset,
         batch_size=config.BATCH_SIZE,
         shuffle=True,
         collate_fn=partial(collate_fn, tokenizer=tokenizer)
     )
 
     val_loader = DataLoader(
-        val_dataset,
+        subset_datasetV,
         batch_size=config.BATCH_SIZE,
         shuffle=False,
         collate_fn=partial(collate_fn, tokenizer=tokenizer)
     )
+
+    
+    subset_sizeVIZ = int(0.1 * len(train_dataset))
+    indices = sample(range(len(train_dataset)), subset_sizeVIZ)
+    subset_datasetVIZ = Subset(train_dataset, indices)
+
+    # Access original dataset for image_cfg
+    orig_dataset = subset_datasetVIZ.dataset
+
+    fig, axes = plt.subplots(2, 5, figsize=(20, 8))
+    axes = axes.flatten()
+
+    for ax, idx in zip(axes, indices[:10]):  # pick 10 random from subset
+        sample_item = orig_dataset[idx]
+        image = sample_item['image']
+
+        # Convert to [H,W,C] and unnormalize
+        image = image.permute(1, 2, 0).cpu().numpy()
+        mean = np.array(orig_dataset.image_cfg.mean)
+        std = np.array(orig_dataset.image_cfg.std)
+        # image = (image * std + mean).clip(0, 1)
+
+        ax.imshow(image)
+        ax.set_title(f"Calories: {sample_item['label']:.0f}\nMass: {sample_item['mass'].item():.0f}g")
+        ax.axis('off')
+
+    plt.tight_layout()
+    plt.show()
+    # visualize-
 
     # --------------------------
     # Тренировка
@@ -124,7 +203,9 @@ def train(config):
         model.train()
         total_loss = 0.0
 
-        for batch in train_loader:
+        loop = tqdm(train_loader, desc=f"Epoch {epoch+1}/{config.EPOCHS}", leave=False)
+    
+        for batch in loop:
             optimizer.zero_grad()
 
             inputs = {
@@ -160,7 +241,7 @@ def validate(model, val_loader, device):
     total_samples = 0
 
     with torch.no_grad():
-        for batch in val_loader:
+        for batch in tqdm(val_loader):
             inputs = {
                 'input_ids': batch['input_ids'].to(device),
                 'attention_mask': batch['attention_mask'].to(device),

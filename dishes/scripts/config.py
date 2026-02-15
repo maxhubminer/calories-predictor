@@ -5,21 +5,21 @@ class Config:
 
     # Модели
     TEXT_MODEL_NAME = "bert-base-uncased"
-    IMAGE_MODEL_NAME = "tf_efficientnet_b0"
+    IMAGE_MODEL_NAME = "tf_efficientnet_b2"
     
     # Какие слои размораживаем - совпадают с неймингом в моделях
     TEXT_MODEL_UNFREEZE = "encoder.layer.11|pooler"
     IMAGE_MODEL_UNFREEZE = "blocks.6|conv_head|bn2"
     
     # Гиперпараметры
-    BATCH_SIZE = 32
+    BATCH_SIZE = 16
     TEXT_LR = 3e-5
-    IMAGE_LR = 1e-4
+    IMAGE_LR = 1e-4    
     CLASSIFIER_LR = 5e-4
-    EPOCHS = 10
+    # EPOCHS = 10
+    EPOCHS = 5
     DROPOUT = 0.3
     HIDDEN_DIM = 256
-    NUM_CLASSES = 5
 
     NORMALIZE_MASS = True
     
