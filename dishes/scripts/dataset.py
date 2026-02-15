@@ -71,8 +71,6 @@ class MultimodalDataset(Dataset):
 
         # ----- MASS -----
         mass = self._normalize_mass(float(row["total_mass"]))
-        # scale to kilograms (stable gradients)
-        mass = mass / 1000.0
         mass = torch.tensor(mass, dtype=torch.float32)
 
         return {
@@ -135,7 +133,7 @@ def get_transforms(config, ds_type="train"):
         # )
         transforms = A.Compose([
             # Resize so smallest side matches target scale
-            A.SmallestMaxSize(max_size=cfg.input_size[1], p=1.0),
+            A.SmallestMaxSize(max_size=max(cfg.input_size[1], cfg.input_size[2]), p=1.0),
 
             # Zoom into food & remove plate/background bias
             A.RandomResizedCrop(

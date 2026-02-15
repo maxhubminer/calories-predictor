@@ -12,13 +12,15 @@ class Config:
     IMAGE_MODEL_UNFREEZE = "blocks.6|conv_head|bn2"
     
     # Гиперпараметры
-    BATCH_SIZE = 16
-    TEXT_LR = 3e-5
-    IMAGE_LR = 1e-4    
-    CLASSIFIER_LR = 5e-4
-    # EPOCHS = 10
-    EPOCHS = 5
-    DROPOUT = 0.3
+    BATCH_SIZE = 8
+    #TEXT_LR = 3e-5
+    TEXT_LR = 3e-3
+    #IMAGE_LR = 1e-4    
+    IMAGE_LR = 1e-2
+    #CLASSIFIER_LR = 5e-4
+    CLASSIFIER_LR = 5e-2
+    EPOCHS = 10
+    DROPOUT = 0.2
     HIDDEN_DIM = 256
 
     NORMALIZE_MASS = True
